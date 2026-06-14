@@ -38,7 +38,9 @@ export default function ReservationsView({
 
   // Filters State
   const [query, setQuery] = useState("");
-  const [filterDate, setFilterDate] = useState("");
+  const [quickDateFilter, setQuickDateFilter] = useState<string>("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [filterType, setFilterType] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
 
@@ -52,7 +54,7 @@ export default function ReservationsView({
   // Automatically reset to the first page when any of the filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [query, filterDate, filterType, filterStatus]);
+  }, [query, quickDateFilter, startDate, endDate, filterType, filterStatus]);
 
   const formatGeneralDate = (dateStr: string) => {
     if (!dateStr) return "—";
@@ -108,17 +110,75 @@ export default function ReservationsView({
     }
   };
 
+  // Dynamic offset generator for date comparisons
+  const getLocalDateString = (offsetDays = 0) => {
+    const d = new Date();
+    if (offsetDays !== 0) {
+      d.setDate(d.getDate() + offsetDays);
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Human-legible description of the active date filter
+  const getDateFilterDescription = () => {
+    if (quickDateFilter === "all") return "Showing all days' history";
+    if (quickDateFilter === "today") return `Today (${formatGeneralDate(getLocalDateString(0))})`;
+    if (quickDateFilter === "tomorrow") return `Tomorrow (${formatGeneralDate(getLocalDateString(1))})`;
+    if (quickDateFilter === "this_week") return `Next 7 Days (${formatGeneralDate(getLocalDateString(0))} to ${formatGeneralDate(getLocalDateString(6))})`;
+    if (quickDateFilter === "next_week") return `Following Week (${formatGeneralDate(getLocalDateString(7))} to ${formatGeneralDate(getLocalDateString(13))})`;
+    if (quickDateFilter === "future") return `Future Events (${formatGeneralDate(getLocalDateString(0))} onwards)`;
+    if (quickDateFilter === "custom") {
+      if (startDate && endDate) return `Range: ${formatGeneralDate(startDate)} to ${formatGeneralDate(endDate)}`;
+      if (startDate) return `From ${formatGeneralDate(startDate)} onwards`;
+      if (endDate) return `Up to ${formatGeneralDate(endDate)}`;
+      return "Custom Range (unspecified)";
+    }
+    return "Filtered dates";
+  };
+
   // Clear filters handler
   const handleClearFilters = () => {
     setQuery("");
-    setFilterDate("");
+    setQuickDateFilter("all");
+    setStartDate("");
+    setEndDate("");
     setFilterType("");
     setFilterStatus("");
   };
 
   // Filter logic matching the HTML script closely
   const filteredGuests = guests.filter(g => {
-    const matchesDate = !filterDate || g.date === filterDate;
+    let matchesDate = true;
+    
+    if (quickDateFilter === "today") {
+      matchesDate = g.date === getLocalDateString(0);
+    } else if (quickDateFilter === "tomorrow") {
+      matchesDate = g.date === getLocalDateString(1);
+    } else if (quickDateFilter === "this_week") {
+      const todayStr = getLocalDateString(0);
+      const weekLaterStr = getLocalDateString(6);
+      matchesDate = g.date >= todayStr && g.date <= weekLaterStr;
+    } else if (quickDateFilter === "next_week") {
+      const nextWeekStart = getLocalDateString(7);
+      const nextWeekEnd = getLocalDateString(13);
+      matchesDate = g.date >= nextWeekStart && g.date <= nextWeekEnd;
+    } else if (quickDateFilter === "future") {
+      matchesDate = g.date >= getLocalDateString(0);
+    } else if (quickDateFilter === "custom") {
+      const hasStart = !!startDate;
+      const hasEnd = !!endDate;
+      if (hasStart && hasEnd) {
+        matchesDate = g.date >= startDate && g.date <= endDate;
+      } else if (hasStart) {
+        matchesDate = g.date >= startDate;
+      } else if (hasEnd) {
+        matchesDate = g.date <= endDate;
+      }
+    }
+
     const matchesType = !filterType || g.type === filterType;
     const matchesStatus = !filterStatus || g.status === filterStatus;
 
@@ -225,22 +285,60 @@ export default function ReservationsView({
           </div>
 
           <div className="flex flex-wrap gap-3 items-center">
-            {/* Date filter input */}
+            {/* Quick date range selector */}
             <div className="relative">
-              <Calendar className="absolute left-3.5 top-3 w-4 h-4 text-[#8a9ab5] pointer-events-none" />
-              <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className="pl-10 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-navy focus:outline-none focus:ring-1 focus:ring-gold"
-              />
+              <Calendar className="absolute left-3 top-3 w-3.5 h-3.5 text-[#8a9ab5] pointer-events-none" />
+              <select
+                value={quickDateFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setQuickDateFilter(val);
+                  if (val === "custom") {
+                    setStartDate(getLocalDateString(0));
+                    setEndDate(getLocalDateString(7));
+                  } else {
+                    setStartDate("");
+                    setEndDate("");
+                  }
+                }}
+                className="pl-8 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-navy font-semibold focus:outline-none focus:ring-1 focus:ring-gold cursor-pointer"
+              >
+                <option value="all">Any Date</option>
+                <option value="today">Today Only</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="this_week">Next 7 Days</option>
+                <option value="next_week">Following Week</option>
+                <option value="future">🔮 Future Events</option>
+                <option value="custom">Custom Range...</option>
+              </select>
             </div>
+
+            {/* Custom fields ONLY when "custom" is chosen */}
+            {quickDateFilter === "custom" && (
+              <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-xl animate-fadeIn shadow-2xs">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-transparent border-0 text-xs text-navy font-medium focus:outline-none focus:ring-0 p-0 w-[110px]"
+                  title="Start Date"
+                />
+                <span className="text-slate-400 text-xs font-semibold px-1">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-transparent border-0 text-xs text-navy font-medium focus:outline-none focus:ring-0 p-0 w-[110px]"
+                  title="End Date"
+                />
+              </div>
+            )}
 
             {/* Type selector */}
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-navy font-semibold focus:outline-none focus:ring-1 focus:ring-gold"
+              className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-navy font-semibold focus:outline-none focus:ring-1 focus:ring-gold cursor-pointer"
             >
               <option value="">All Types</option>
               <option value={EntryType.RESERVATION}>Reservation</option>
@@ -251,7 +349,7 @@ export default function ReservationsView({
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-navy font-semibold focus:outline-none focus:ring-1 focus:ring-gold"
+              className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-navy font-semibold focus:outline-none focus:ring-1 focus:ring-gold cursor-pointer"
             >
               <option value="">All Statuses</option>
               <option value={RsvpStatus.CONFIRMED}>Confirmed</option>
@@ -262,10 +360,10 @@ export default function ReservationsView({
             </select>
 
             {/* Clear button */}
-            {(query || filterDate || filterType || filterStatus) && (
+            {(query || quickDateFilter !== "all" || startDate || endDate || filterType || filterStatus) && (
               <button
                 onClick={handleClearFilters}
-                className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-xl text-xs text-navy-soft font-bold flex items-center gap-1.5 transition"
+                className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-xl text-xs text-navy-soft font-bold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
                 Clear
@@ -277,7 +375,7 @@ export default function ReservationsView({
         {/* Results summary band indicator */}
         <div className="px-6 py-3 bg-gold-pale/50 border-b border-gray-150 text-xs font-semibold text-gold flex justify-between">
           <span>
-            {filterDate ? `📁 Selected Date History: ${formatGeneralDate(filterDate)}` : "📁 Showing all days' history"} 
+            📁 {getDateFilterDescription()} 
             {` (${filteredGuests.length} of ${guests.length} matches)`}
           </span>
           <span>Cumulative headcount: {totalPax} guests (pax)</span>
@@ -311,7 +409,7 @@ export default function ReservationsView({
                 <th className="py-4 px-5">Table</th>
                 <th className="py-4 px-5">Arrive / Depart</th>
                 <th className="py-4 px-5">Status</th>
-                <th className="py-4 px-5">Staff Assigned</th>
+                <th className="py-4 px-5">Booked By</th>
                 <th className="py-4 px-5">Special Notes</th>
                 <th className="py-4 px-5 text-right">Actions</th>
               </tr>

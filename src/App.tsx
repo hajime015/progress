@@ -428,7 +428,7 @@ export default function App() {
 
   // 9. EXPORT RECORD TO CSV CLIENT DOWNLOAD
   const exportCSV = () => {
-    const headers = ["ID", "Name", "Phone", "Type", "Date", "Time", "Pax", "Table Assigned", "Status", "Staff Assigned", "Special Request Notes"];
+    const headers = ["ID", "Name", "Phone", "Type", "Date", "Time", "Pax", "Table Assigned", "Status", "Booked By", "Special Request Notes"];
     
     const rows = guests.map(r => [
       r.id,

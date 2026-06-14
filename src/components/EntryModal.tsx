@@ -32,7 +32,7 @@ export default function EntryModal({
   timezone,
   guestsKey
 }: EntryModalProps) {
-  const storageKey = guestsKey || "guest_rsvp_mngr_guests";
+  const storageKey = "restaurant_reservations";
 
   // Local Form States
   const [type, setType] = useState<EntryType>(EntryType.RESERVATION);
@@ -439,7 +439,7 @@ export default function EntryModal({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Maria Santos"
+                placeholder="Maria Santos"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-navy focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold"
               />
             </div>
@@ -452,7 +452,7 @@ export default function EntryModal({
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. +63 912 345 6789"
+                placeholder="+63 912 345 6789"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-navy focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold"
               />
             </div>
@@ -548,14 +548,14 @@ export default function EntryModal({
 
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold text-[#8a9ab5] uppercase tracking-wider">
-                Assigned Server (Staff)
+                Booked By (Staff)
               </label>
               <select
                 value={staff}
                 onChange={(e) => setStaff(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-navy font-semibold focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold cursor-pointer"
               >
-                <option value="Unassigned">-- Choose Server (Unassigned) --</option>
+                <option value="Unassigned">-- Choose Staff (Unassigned) --</option>
                 {staffList.map((st, index) => (
                   <option key={index} value={st}>
                     👤 {st}
@@ -574,7 +574,7 @@ export default function EntryModal({
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Vegetarian diet, anniversary setup, wheelchair access needed..."
+              placeholder="Vegetarian diet, anniversary setup, wheelchair access needed..."
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-navy focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold"
             />
           </div>
