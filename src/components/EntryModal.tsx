@@ -164,7 +164,8 @@ export default function EntryModal({
     }
 
     const cleanPhone = rawPhone.trim();
-    if (cleanPhone.length < 4) {
+    const normalizedClean = cleanPhone.replace(/[\s\-\(\)\+\.]/g, "");
+    if (normalizedClean.length < 4) {
       setRepeatGuestByPhone(null);
       setHasPulledDetails(false);
       return;
@@ -181,9 +182,12 @@ export default function EntryModal({
     // Combine current guestList with returningGuestsList to search returning guests
     const allGuestsToMatch: Guest[] = [...guestList];
     returningGuestsList.forEach((rg, idx) => {
-      const alreadyHasInLocal = guestList.some(
-        g => g.phone && String(g.phone).trim() === String(rg.phone || "").trim()
-      );
+      const alreadyHasInLocal = guestList.some(g => {
+        if (!g.phone) return false;
+        const normG = String(g.phone).replace(/[\s\-\(\)\+\.]/g, "");
+        const normRG = String(rg.phone || "").replace(/[\s\-\(\)\+\.]/g, "");
+        return normG === normRG;
+      });
       if (!alreadyHasInLocal) {
         allGuestsToMatch.push({
           id: `seed_rg_${idx}_${rg.phone}`,
@@ -201,9 +205,11 @@ export default function EntryModal({
       }
     });
 
-    const match = allGuestsToMatch.find(
-      g => g.phone && String(g.phone).trim() === cleanPhone && (!guestToEdit || g.id !== guestToEdit.id)
-    );
+    const match = allGuestsToMatch.find(g => {
+      if (!g.phone) return false;
+      const normG = String(g.phone).replace(/[\s\-\(\)\+\.]/g, "");
+      return normG === normalizedClean && (!guestToEdit || g.id !== guestToEdit.id);
+    });
 
     if (match) {
       setRepeatGuestByPhone(match);
@@ -225,9 +231,11 @@ export default function EntryModal({
       }
     } else {
       setRepeatGuestByPhone(null);
-      const anyPhonePrefixMatch = allGuestsToMatch.some(
-        g => g.phone && String(g.phone).trim().startsWith(cleanPhone) && (!guestToEdit || g.id !== guestToEdit.id)
-      );
+      const anyPhonePrefixMatch = allGuestsToMatch.some(g => {
+        if (!g.phone) return false;
+        const normG = String(g.phone).replace(/[\s\-\(\)\+\.]/g, "");
+        return normG.startsWith(normalizedClean) && (!guestToEdit || g.id !== guestToEdit.id);
+      });
       if (!anyPhonePrefixMatch) {
          setHasPulledDetails(false);
       }
@@ -481,10 +489,17 @@ export default function EntryModal({
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[#8a9ab5] uppercase tracking-wider">
-                Phone Contact Number
-              </label>
+            <div className="space-y-1.5 font-sans">
+              <div className="flex justify-between items-center">
+                <label className="block text-[10px] font-bold text-[#8a9ab5] uppercase tracking-wider">
+                  Phone Contact Number
+                </label>
+                {repeatGuestByPhone && (
+                  <span className="text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-250 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-fadeIn">
+                    <span>✨</span> Guest Profile Auto-loaded
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={phone}

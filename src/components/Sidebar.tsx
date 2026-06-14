@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef } from "react";
-import { LayoutDashboard, CalendarRange, Map, UserPlus, Footprints, Users, FileSpreadsheet, Printer, CloudLightning, Shield, Lock, LogOut, Key, Camera, Check, X, Pencil, Trash2, Database } from "lucide-react";
+import { LayoutDashboard, CalendarRange, Map, UserPlus, Footprints, Users, FileSpreadsheet, Printer, Shield, LogOut, Camera, Check, X, Pencil, Trash2, Database } from "lucide-react";
 
 interface SidebarProps {
   activeTab: string;

@@ -92,9 +92,7 @@ export default function TableMapView({
   };
 
   const handleRemoveTableRow = (idx: number) => {
-    if (window.confirm(`Are you sure you want to remove ${localTables[idx].name}?`)) {
-      setLocalTables(localTables.filter((_, i) => i !== idx));
-    }
+    setLocalTables(localTables.filter((_, i) => i !== idx));
   };
 
   const handleSaveTM = () => {

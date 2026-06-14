@@ -19,6 +19,7 @@ import EntryModal from "./components/EntryModal";
 import StaffManagerModal from "./components/StaffManagerModal";
 import SyncConfigPanel from "./components/SyncConfigPanel";
 import LoginScreen from "./components/LoginScreen";
+import ConfirmModal from "./components/ConfirmModal";
 
 // Timezone Utilities
 import {
@@ -141,6 +142,19 @@ export default function App() {
   
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+
+  // Custom confirmation modal state
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
 
   // Global background sync loader
   const [isSyncing, setIsSyncing] = useState(false);
@@ -307,12 +321,17 @@ export default function App() {
     const target = guests.find(g => g.id === id);
     if (!target) return;
 
-    if (window.confirm(`Are you absolutely sure you want to remove the booking for ${target.name}?`)) {
-      const updatedList = guests.filter(g => g.id !== id);
-      setGuests(updatedList);
-      localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
-      showToast(`🗑️ ${target.name}'s reservation deleted`);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: "Remove Booking",
+      message: `Are you absolutely sure you want to remove the booking for ${target.name}?`,
+      onConfirm: () => {
+        const updatedList = guests.filter(g => g.id !== id);
+        setGuests(updatedList);
+        localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
+        showToast(`🗑️ ${target.name}'s reservation deleted`);
+      }
+    });
   };
 
   const handleBulkUpdateGuestStatus = (ids: string[], newStatus: RsvpStatus) => {
@@ -323,12 +342,17 @@ export default function App() {
   };
 
   const handleBulkDeleteGuests = (ids: string[]) => {
-    if (window.confirm(`Are you absolutely sure you want to delete the ${ids.length} selected reservation(s)?`)) {
-      const updatedList = guests.filter(g => !ids.includes(g.id));
-      setGuests(updatedList);
-      localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
-      showToast(`🗑️ Bulk deleted ${ids.length} reservation(s)`);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: "Bulk Delete Bookings",
+      message: `Are you absolutely sure you want to delete the ${ids.length} selected reservation(s)?`,
+      onConfirm: () => {
+        const updatedList = guests.filter(g => !ids.includes(g.id));
+        setGuests(updatedList);
+        localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
+        showToast(`🗑️ Bulk deleted ${ids.length} reservation(s)`);
+      }
+    });
   };
 
   // 3. EDIT TRIGGER: Pre-populate and show entry modal
@@ -675,6 +699,15 @@ export default function App() {
         guests={guests}
         onImportGuests={handleImportGuests}
         onClearAllGuests={handleClearAllGuests}
+      />
+
+      {/* 4. CUSTOM CONFIRMATION ACTION DIALOG OVERLAY */}
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={confirmState.onConfirm}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
       />
 
 

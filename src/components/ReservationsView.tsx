@@ -189,7 +189,7 @@ export default function ReservationsView({
     return matchesDate && matchesType && matchesStatus && matchesQuery;
   });
 
-  const totalPax = filteredGuests.reduce((sum, g) => sum + (g.pax || 0), 0);
+  const totalPax = filteredGuests.filter(g => g.status !== RsvpStatus.CANCELLED).reduce((sum, g) => sum + (g.pax || 0), 0);
 
   // Pagination calculations for performance on 10,000+ guest records
   const totalPages = Math.ceil(filteredGuests.length / pageSize) || 1;
