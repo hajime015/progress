@@ -157,60 +157,50 @@ export default function App() {
     }, 3500);
   };
 
-  // Local sync method to Apps Script Web App
-  const callAppsScriptAPI = async (action: string, payload: any = {}) => {
-    if (!scriptUrl) return null;
-    try {
-      setIsSyncing(true);
-      const response = await fetch(scriptUrl, {
-        method: "POST",
-        mode: "cors",
-        headers: {
-          "Content-Type": "text/plain"
-        },
-        body: JSON.stringify({ action, ...payload })
-      });
-      if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
-      const result = await response.json();
-      if (!result.success) throw new Error(result.error || "Execution unsuccessful");
-      return result;
-    } catch (err: any) {
-      console.error("Sheets Sync Error: ", err);
-      let errMsg = err.message || "Connection rejected";
-      if (errMsg.toLowerCase().includes("failed to fetch") || errMsg.toLowerCase().includes("typeerror")) {
-        errMsg = "Google Web App unreachable. Ensure your Apps Script URL is correct and deployed with access: 'Anyone'.";
-      }
-      showToast(`⚠️ Sync notice: ${errMsg}`);
-      return null;
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // SEED AND INITIALIZE DATASETS PER LOGGED GMAIL ACCOUNT
+  // SEED AND INITIALIZE DATASETS FROM LOCAL STORAGE WITH DATA RECOVERY ON CORRUPTION
   useEffect(() => {
     if (!loggedUsername) return;
 
-    const cachedGuests = localStorage.getItem(getAccountKey("guests"));
-    const cachedTables = localStorage.getItem(getAccountKey("tables"));
-    const cachedStaff = localStorage.getItem(getAccountKey("staff"));
-    const cachedUrl = localStorage.getItem(getAccountKey("script_url"));
-    const cachedName = localStorage.getItem(getAccountKey("restaurant_name"));
-    const cachedPhoto = localStorage.getItem(getAccountKey("restaurant_photo"));
-    const cachedTz = localStorage.getItem(getAccountKey("timezone"));
+    // Load reservations from 'restaurant_reservations' key with auto-repair/recovery
+    const rawReservations = localStorage.getItem("restaurant_reservations");
+    const cachedTables = localStorage.getItem("guest_rsvp_mngr_tables");
+    const cachedStaff = localStorage.getItem("guest_rsvp_mngr_staff");
+    const cachedName = localStorage.getItem("restaurant_name");
+    const cachedPhoto = localStorage.getItem("restaurant_photo");
+    const cachedTz = localStorage.getItem("timezone");
 
     let loadedGuests = initialGuests;
     let loadedTables = initialTables;
     let loadedStaff = initialStaff;
 
-    if (cachedGuests) {
+    if (rawReservations) {
       try {
-        loadedGuests = JSON.parse(cachedGuests);
-      } catch (e) {
+        const parsed = JSON.parse(rawReservations);
+        if (Array.isArray(parsed)) {
+          // Auto repair list items to preserve fields and prevent structural failure
+          loadedGuests = parsed.map((item: any, idx: number) => {
+            return {
+              ...item,
+              id: item.id || `reservation_${Date.now()}_${idx}_${Math.floor(Math.random() * 10000)}`,
+              name: item.name || "Recovered Booking",
+              type: item.type === "Walk-In" ? "Walk-In" : "Reservation",
+              status: item.status || "Pending",
+              date: item.date || new Date().toISOString().slice(0, 10),
+              time: item.time || "07:00 PM",
+              pax: Number(item.pax) || 2,
+              table: item.table || "Unassigned"
+            };
+          });
+        } else {
+          throw new Error("Local Storage 'restaurant_reservations' is not a JSON Array");
+        }
+      } catch (err) {
+        console.error("Local Storage is corrupted! Restoring back up & auto-recovering...", err);
+        localStorage.setItem("restaurant_reservations", JSON.stringify(initialGuests));
         loadedGuests = initialGuests;
       }
     } else {
-      localStorage.setItem(getAccountKey("guests"), JSON.stringify(initialGuests));
+      localStorage.setItem("restaurant_reservations", JSON.stringify(initialGuests));
     }
 
     if (cachedTables) {
@@ -233,7 +223,7 @@ export default function App() {
         loadedTables = initialTables;
       }
     } else {
-      localStorage.setItem(getAccountKey("tables"), JSON.stringify(initialTables));
+      localStorage.setItem("guest_rsvp_mngr_tables", JSON.stringify(initialTables));
     }
 
     if (cachedStaff) {
@@ -243,7 +233,7 @@ export default function App() {
         loadedStaff = initialStaff;
       }
     } else {
-      localStorage.setItem(getAccountKey("staff"), JSON.stringify(initialStaff));
+      localStorage.setItem("guest_rsvp_mngr_staff", JSON.stringify(initialStaff));
     }
 
     // Set states
@@ -251,17 +241,10 @@ export default function App() {
     setTables(loadedTables);
     setStaffList(loadedStaff);
 
-    // Sheets script URL
-    const targetUrl = cachedUrl || "https://script.google.com/macros/s/AKfycby6xlQM9iYa5qOSkxeDrLSG6vkrZbTCz03tacSZyV_7hHwQJr4b5arT9Yo8skIk0Eemog/exec";
-    setScriptUrl(targetUrl);
-    if (!cachedUrl) {
-      localStorage.setItem(getAccountKey("script_url"), targetUrl);
-    }
-
     // Brand Name & Photo
     setRestaurantName(cachedName || "Guest Manager");
     if (!cachedName) {
-      localStorage.setItem(getAccountKey("restaurant_name"), "Guest Manager");
+      localStorage.setItem("restaurant_name", "Guest Manager");
     }
     setRestaurantPhoto(cachedPhoto || null);
 
@@ -270,101 +253,23 @@ export default function App() {
       setTimezone(cachedTz);
     } else {
       setTimezone("AUTO");
-      localStorage.setItem(getAccountKey("timezone"), "AUTO");
+      localStorage.setItem("timezone", "AUTO");
     }
 
-    // Load saving preferences
-    const cachedStorageMode = localStorage.getItem(getAccountKey("storage_mode"));
-    const cachedAutoSave = localStorage.getItem(getAccountKey("auto_save"));
-
-    let activeStorageMode: "local" | "google_sync" = "local";
-    if (cachedStorageMode) {
-      activeStorageMode = cachedStorageMode as "local" | "google_sync";
-      setStorageMode(activeStorageMode);
-    } else {
-      const defaultMode = cachedUrl ? "google_sync" : "local";
-      activeStorageMode = defaultMode;
-      setStorageMode(defaultMode);
-      localStorage.setItem(getAccountKey("storage_mode"), defaultMode);
-    }
-
-    if (cachedAutoSave !== null) {
-      setAutoSave(cachedAutoSave === "true");
-    } else {
-      setAutoSave(true);
-      localStorage.setItem(getAccountKey("auto_save"), "true");
-    }
-
-    // Execute background remote sync pull immediately only if in google_sync mode
-    if (activeStorageMode === "google_sync") {
-      setTimeout(() => {
-        executePullFromSheet(targetUrl, true);
-      }, 500);
-    }
+    // Storage Modes (Set default to standalone offline local)
+    setStorageMode("local");
+    setAutoSave(true);
   }, [loggedUsername]);
-
-  // Sync / pull data helper from sheet URL
-  const executePullFromSheet = async (targetUrl: string, silent = false) => {
-    if (!targetUrl || !loggedUsername) return;
-    try {
-      if (!silent) setIsSyncing(true);
-      const res = await fetch(targetUrl, {
-        method: "POST",
-        mode: "cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: "getAll" })
-      });
-      if (!res.ok) throw new Error("HTTP connection failed");
-      const data = await res.json();
-      if (data.success) {
-        // Save reservations if any exist on the remote sheet
-        if (data.reservations && data.reservations.length > 0) {
-          setGuests(data.reservations);
-          localStorage.setItem(getAccountKey("guests"), JSON.stringify(data.reservations));
-        }
-        // Save tables configurations if matching remote list
-        if (data.tables && data.tables.length > 0) {
-          setTables(data.tables);
-          localStorage.setItem(getAccountKey("tables"), JSON.stringify(data.tables));
-        }
-        // Save crew roster
-        if (data.staff && data.staff.length > 0) {
-          setStaffList(data.staff);
-          localStorage.setItem(getAccountKey("staff"), JSON.stringify(data.staff));
-        }
-        if (!silent) {
-          showToast("🔄 Google Sheets synchronized successfully!");
-        }
-      }
-    } catch (e) {
-      console.warn("Could not fetch remote startup data. Using offline storage.", e);
-      if (!silent) {
-        showToast("⚠️ Sync notice: Spreadsheet offline or unreachable.");
-      }
-    } finally {
-      if (!silent) setIsSyncing(false);
-    }
-  };
-
-  // Background Auto-Sync loop for active cross-platform updates
-  useEffect(() => {
-    if (!scriptUrl || storageMode !== "google_sync") return;
-    const interval = setInterval(() => {
-      // Quiet background pull to refresh data silently
-      executePullFromSheet(scriptUrl, true);
-    }, 5000); // 5 seconds auto-interval
-    return () => clearInterval(interval);
-  }, [scriptUrl, loggedUsername, storageMode]);
 
   // Local storage broadcast listener for instantaneous multi-tab sync on same machine
   useEffect(() => {
     const syncLocalTabs = (e: StorageEvent) => {
       if (!loggedUsername) return;
-      if (e.key === getAccountKey("guests") && e.newValue) {
+      if (e.key === "restaurant_reservations" && e.newValue) {
         try { setGuests(JSON.parse(e.newValue)); } catch (err) { console.error(err); }
-      } else if (e.key === getAccountKey("tables") && e.newValue) {
+      } else if (e.key === "guest_rsvp_mngr_tables" && e.newValue) {
         try { setTables(JSON.parse(e.newValue)); } catch (err) { console.error(err); }
-      } else if (e.key === getAccountKey("staff") && e.newValue) {
+      } else if (e.key === "guest_rsvp_mngr_staff" && e.newValue) {
         try { setStaffList(JSON.parse(e.newValue)); } catch (err) { console.error(err); }
       }
     };
@@ -373,7 +278,7 @@ export default function App() {
   }, [loggedUsername]);
 
   // 1. ADD / UPDATE BOOKING ACTION
-  const handleSaveGuest = async (savedGuest: Guest) => {
+  const handleSaveGuest = (savedGuest: Guest) => {
     const exists = guests.some(g => g.id === savedGuest.id);
     let updatedList: Guest[];
     if (exists) {
@@ -385,84 +290,44 @@ export default function App() {
     }
 
     setGuests(updatedList);
+    localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
     setIsEntryModalOpen(false);
     setGuestToEdit(null);
-
-    if (autoSave) {
-      localStorage.setItem(getAccountKey("guests"), JSON.stringify(updatedList));
-      if (storageMode === "google_sync" && scriptUrl) {
-        await callAppsScriptAPI("syncReservations", { reservations: updatedList });
-      }
-    } else {
-      setHasUnsavedChanges(true);
-    }
   };
 
-  const handleUpdateGuestStatus = async (id: string, newStatus: RsvpStatus) => {
+  const handleUpdateGuestStatus = (id: string, newStatus: RsvpStatus) => {
     const updatedList = guests.map(g => (g.id === id ? { ...g, status: newStatus } : g));
     setGuests(updatedList);
+    localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
     showToast(`⚡ Status updated to: ${newStatus}`);
-
-    if (autoSave) {
-      localStorage.setItem(getAccountKey("guests"), JSON.stringify(updatedList));
-      if (storageMode === "google_sync" && scriptUrl) {
-        await callAppsScriptAPI("syncReservations", { reservations: updatedList });
-      }
-    } else {
-      setHasUnsavedChanges(true);
-    }
   };
 
   // 2. DELETE BOOKING ACTION
-  const handleDeleteGuest = async (id: string) => {
+  const handleDeleteGuest = (id: string) => {
     const target = guests.find(g => g.id === id);
     if (!target) return;
 
     if (window.confirm(`Are you absolutely sure you want to remove the booking for ${target.name}?`)) {
       const updatedList = guests.filter(g => g.id !== id);
       setGuests(updatedList);
+      localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
       showToast(`🗑️ ${target.name}'s reservation deleted`);
-
-      if (autoSave) {
-        localStorage.setItem(getAccountKey("guests"), JSON.stringify(updatedList));
-        if (storageMode === "google_sync" && scriptUrl) {
-          await callAppsScriptAPI("syncReservations", { reservations: updatedList });
-        }
-      } else {
-        setHasUnsavedChanges(true);
-      }
     }
   };
 
-  const handleBulkUpdateGuestStatus = async (ids: string[], newStatus: RsvpStatus) => {
+  const handleBulkUpdateGuestStatus = (ids: string[], newStatus: RsvpStatus) => {
     const updatedList = guests.map(g => ids.includes(g.id) ? { ...g, status: newStatus } : g);
     setGuests(updatedList);
+    localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
     showToast(`⚡ Bulk updated status of ${ids.length} reservation(s) to: ${newStatus}`);
-
-    if (autoSave) {
-      localStorage.setItem(getAccountKey("guests"), JSON.stringify(updatedList));
-      if (storageMode === "google_sync" && scriptUrl) {
-        await callAppsScriptAPI("syncReservations", { reservations: updatedList });
-      }
-    } else {
-      setHasUnsavedChanges(true);
-    }
   };
 
-  const handleBulkDeleteGuests = async (ids: string[]) => {
+  const handleBulkDeleteGuests = (ids: string[]) => {
     if (window.confirm(`Are you absolutely sure you want to delete the ${ids.length} selected reservation(s)?`)) {
       const updatedList = guests.filter(g => !ids.includes(g.id));
       setGuests(updatedList);
+      localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
       showToast(`🗑️ Bulk deleted ${ids.length} reservation(s)`);
-
-      if (autoSave) {
-        localStorage.setItem(getAccountKey("guests"), JSON.stringify(updatedList));
-        if (storageMode === "google_sync" && scriptUrl) {
-          await callAppsScriptAPI("syncReservations", { reservations: updatedList });
-        }
-      } else {
-        setHasUnsavedChanges(true);
-      }
     }
   };
 
@@ -480,7 +345,7 @@ export default function App() {
   };
 
   // 5. UPDATE GUEST SEATING TABLE DIRECTLY FROM MAP
-  const handleUpdateGuestTableDirect = async (guestId: string, tableName: string, forceStatus?: RsvpStatus) => {
+  const handleUpdateGuestTableDirect = (guestId: string, tableName: string, forceStatus?: RsvpStatus) => {
     const updatedList = guests.map(g => {
       if (g.id === guestId) {
         return {
@@ -493,190 +358,72 @@ export default function App() {
     });
 
     setGuests(updatedList);
+    localStorage.setItem("restaurant_reservations", JSON.stringify(updatedList));
     showToast(`🔗 Assigned table to guest`);
-
-    if (autoSave) {
-      localStorage.setItem(getAccountKey("guests"), JSON.stringify(updatedList));
-      if (storageMode === "google_sync" && scriptUrl) {
-        await callAppsScriptAPI("syncReservations", { reservations: updatedList });
-      }
-    } else {
-      setHasUnsavedChanges(true);
-    }
   };
 
   // 6. GENERAL TABLES MANAGER CONF CONFIG SAVE
-  const handleUpdateTableConfig = async (newTables: TableConfig[]) => {
+  const handleUpdateTableConfig = (newTables: TableConfig[]) => {
     setTables(newTables);
+    localStorage.setItem("guest_rsvp_mngr_tables", JSON.stringify(newTables));
     showToast("⚙️ Table deck configurations updated!");
-
-    if (autoSave) {
-      localStorage.setItem(getAccountKey("tables"), JSON.stringify(newTables));
-      if (storageMode === "google_sync" && scriptUrl) {
-        await callAppsScriptAPI("syncTables", { tables: newTables });
-      }
-    } else {
-      setHasUnsavedChanges(true);
-    }
   };
 
   // 7. CREW MEMBERS CREATION/REMOVAL
-  const handleAddStaff = async (name: string) => {
+  const handleAddStaff = (name: string) => {
     if (staffList.includes(name)) {
       showToast("👤 Staff member name already exists");
       return;
     }
     const updated = [...staffList, name];
     setStaffList(updated);
+    localStorage.setItem("guest_rsvp_mngr_staff", JSON.stringify(updated));
     showToast(`👤 Waiting staff ${name} registered`);
-
-    if (autoSave) {
-      localStorage.setItem(getAccountKey("staff"), JSON.stringify(updated));
-      if (storageMode === "google_sync" && scriptUrl) {
-        await callAppsScriptAPI("syncStaff", { staff: updated });
-      }
-    } else {
-      setHasUnsavedChanges(true);
-    }
   };
 
-  const handleRemoveStaff = async (index: number) => {
+  const handleRemoveStaff = (index: number) => {
     const targetName = staffList[index];
     const updated = staffList.filter((_, i) => i !== index);
     setStaffList(updated);
+    localStorage.setItem("guest_rsvp_mngr_staff", JSON.stringify(updated));
     showToast(`🗑️ ${targetName} removed from waitstaff`);
-
-    if (autoSave) {
-      localStorage.setItem(getAccountKey("staff"), JSON.stringify(updated));
-      if (storageMode === "google_sync" && scriptUrl) {
-        await callAppsScriptAPI("syncStaff", { staff: updated });
-      }
-    } else {
-      setHasUnsavedChanges(true);
-    }
   };
 
-  // 7.5 STORAGE & AUTO-SAVE MANAGEMENT HANDLERS
+  // 7.5 STORAGE & AUTO-SAVE MANAGEMENT HANDLERS (Simplified offline local fallback)
   const handleUpdateStorageMode = (mode: "local" | "google_sync") => {
-    setStorageMode(mode);
-    localStorage.setItem(getAccountKey("storage_mode"), mode);
-    if (mode === "google_sync") {
-      showToast("🌐 Saving mode: Google Sheets Sync (Active auto-backup)");
-      if (scriptUrl) {
-        executePullFromSheet(scriptUrl);
-      }
-    } else {
-      showToast("💾 Saving mode: Standalone Local Storage (Offline)");
-    }
+    setStorageMode("local");
+    setAutoSave(true);
   };
 
   const handleUpdateAutoSave = (enabled: boolean) => {
-    setAutoSave(enabled);
-    localStorage.setItem(getAccountKey("auto_save"), String(enabled));
-    if (enabled) {
-      showToast("💾 Automatic saving turned ON");
-      // Persist current memory states immediately
-      localStorage.setItem(getAccountKey("guests"), JSON.stringify(guests));
-      localStorage.setItem(getAccountKey("tables"), JSON.stringify(tables));
-      localStorage.setItem(getAccountKey("staff"), JSON.stringify(staffList));
-      if (storageMode === "google_sync" && scriptUrl) {
-        callAppsScriptAPI("syncReservations", { reservations: guests });
-        callAppsScriptAPI("syncTables", { tables: tables });
-        callAppsScriptAPI("syncStaff", { staff: staffList });
-      }
-      setHasUnsavedChanges(false);
-    } else {
-      showToast("⚠️ Automatic saving turned OFF (requires manual saves)");
-    }
+    setAutoSave(true);
   };
 
-  const handleManualSaveAll = async () => {
-    try {
-      setIsSyncing(true);
-      // Write to local storage
-      localStorage.setItem(getAccountKey("guests"), JSON.stringify(guests));
-      localStorage.setItem(getAccountKey("tables"), JSON.stringify(tables));
-      localStorage.setItem(getAccountKey("staff"), JSON.stringify(staffList));
-
-      if (storageMode === "google_sync" && scriptUrl) {
-        showToast("💾 Syncing manual saves directly to Google Sheets...");
-        await Promise.all([
-          callAppsScriptAPI("syncReservations", { reservations: guests }),
-          callAppsScriptAPI("syncTables", { tables: tables }),
-          callAppsScriptAPI("syncStaff", { staff: staffList })
-        ]);
-        showToast("🌐 Memory synchronized perfectly to Google Sheets!");
-      } else {
-        showToast("💾 Memory persisted successfully to browser LocalStorage!");
-      }
-      setHasUnsavedChanges(false);
-    } catch (e) {
-      showToast("⚠️ Manual saving encountered an error.");
-    } finally {
-      setIsSyncing(false);
-    }
+  const handleManualSaveAll = () => {
+    localStorage.setItem("restaurant_reservations", JSON.stringify(guests));
+    localStorage.setItem("guest_rsvp_mngr_tables", JSON.stringify(tables));
+    localStorage.setItem("guest_rsvp_mngr_staff", JSON.stringify(staffList));
+    showToast("💾 Database memory persisted down to browser LocalStorage!");
   };
 
   const handleDiscardChanges = () => {
-    if (window.confirm("Are you sure you want to discard all unsaved changes since last manual save? This will reload your database to the last cached state on your local storage.")) {
-      const cachedGuests = localStorage.getItem(getAccountKey("guests"));
-      const cachedTables = localStorage.getItem(getAccountKey("tables"));
-      const cachedStaff = localStorage.getItem(getAccountKey("staff"));
-
-      if (cachedGuests) setGuests(JSON.parse(cachedGuests));
-      if (cachedTables) setTables(JSON.parse(cachedTables));
-      if (cachedStaff) setStaffList(JSON.parse(cachedStaff));
-
-      setHasUnsavedChanges(false);
-      showToast("🗑️ Unsaved changes discarded");
-    }
+    showToast("ℹ️ Auto-saving is active. All interactions are automatically stored.");
   };
 
-  // 8. GOOGLE SHEETS CONNECTION CONFIGURATION
-  const handleSaveSyncUrl = (url: string) => {
-    setScriptUrl(url);
-    if (url) {
-      localStorage.setItem(getAccountKey("script_url"), url);
-      // Run background pull immediately to capture spreadsheet state
-      executePullFromSheet(url);
-    } else {
-      localStorage.removeItem(getAccountKey("script_url"));
-      showToast("🔌 Apps Script Web App unlinked. Now offline local.");
-    }
+  const handleSaveSyncUrl = (url: string) => {};
+  const handleTestSync = async () => true;
+
+  // 7.8 JSON DATABASE BACKUP AND RESTORATION HANDLERS
+  const handleImportGuests = (imported: Guest[]) => {
+    setGuests(imported);
+    localStorage.setItem("restaurant_reservations", JSON.stringify(imported));
+    showToast(`📊 Restore completed: Loaded ${imported.length} reservations!`);
   };
 
-  const handleTestSync = async (testUrl?: string): Promise<boolean> => {
-    const urlToTest = testUrl || scriptUrl;
-    if (!urlToTest) return false;
-    try {
-      const response = await fetch(urlToTest, {
-        method: "POST",
-        mode: "cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: "getAll" })
-      });
-      if (!response.ok) return false;
-      const data = await response.json();
-      if (data.success) {
-        // Save pulled database values immediately
-        if (data.reservations && data.reservations.length > 0) {
-          setGuests(data.reservations);
-          localStorage.setItem(getAccountKey("guests"), JSON.stringify(data.reservations));
-        }
-        if (data.tables && data.tables.length > 0) {
-          setTables(data.tables);
-          localStorage.setItem(getAccountKey("tables"), JSON.stringify(data.tables));
-        }
-        if (data.staff && data.staff.length > 0) {
-          setStaffList(data.staff);
-          localStorage.setItem(getAccountKey("staff"), JSON.stringify(data.staff));
-        }
-        return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
+  const handleClearAllGuests = () => {
+    setGuests([]);
+    localStorage.setItem("restaurant_reservations", JSON.stringify([]));
+    showToast("🧹 Database wiped. Clear reservation logs.");
   };
 
   // 9. EXPORT RECORD TO CSV CLIENT DOWNLOAD
@@ -731,9 +478,9 @@ export default function App() {
         </div>
         <LoginScreen 
           onLoginSuccess={handleLoginSuccess} 
-          isSyncing={isSyncing}
-          scriptUrl={scriptUrl}
-          onSaveUrl={handleSaveSyncUrl}
+          isSyncing={false}
+          scriptUrl=""
+          onSaveUrl={() => {}}
         />
       </div>
     );
@@ -742,19 +489,6 @@ export default function App() {
   return (
     <div id="guest-rsvp-manager-applet" className="min-h-screen bg-cream text-navy font-sans antialiased flex flex-col lg:flex-row relative">
       
-      {/* Dynamic sync loading glass veil */}
-      {isSyncing && (
-        <div id="api-syncing-indicator" className="fixed inset-0 bg-[#0f1f38]/30 backdrop-blur-[1px] z-[5000] flex flex-col gap-3 items-center justify-center text-white">
-          <div className="bg-navy border border-gold-light/20 p-6 rounded-3xl shadow-2xl flex items-center gap-3.5">
-            <Loader2 className="w-6 h-6 text-gold animate-spin" />
-            <div>
-              <p className="font-serif text-sm font-bold text-white tracking-wide">Sheets Database Syncing...</p>
-              <p className="text-[10px] text-white/60 uppercase mt-0.5 font-bold tracking-wide">Syncing data reports live</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Royal Luxury Toast Alert messages */}
       <div
         id="applet-toast-banner"
@@ -776,14 +510,16 @@ export default function App() {
         exportCSV={exportCSV}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        isSynced={isSyncing}
-        sheetUrlConfigured={!!scriptUrl && storageMode === "google_sync"}
+        isSynced={false}
+        sheetUrlConfigured={false}
         username={loggedUsername}
         onLogout={handleLogout}
         restaurantName={restaurantName}
         setRestaurantName={handleSaveRestaurantName}
         restaurantPhoto={restaurantPhoto}
         setRestaurantPhoto={handleSaveRestaurantPhoto}
+        hasUnsavedChanges={false}
+        onManualSave={handleManualSaveAll}
       />
 
       {/* Primary content view main stage body */}
@@ -794,10 +530,10 @@ export default function App() {
           <div className="flex items-center gap-4">
             {/* Hamburger trigger */}
             <button
-              id="sidebar-toggle-hamburger"
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2.5 bg-slate-50 border border-gray-200 text-navy rounded-xl hover:bg-slate-100 transition cursor-pointer"
-              title="Open Navigation"
+               id="sidebar-toggle-hamburger"
+               onClick={() => setIsSidebarOpen(true)}
+               className="lg:hidden p-2.5 bg-slate-50 border border-gray-200 text-navy rounded-xl hover:bg-slate-100 transition cursor-pointer"
+               title="Open Navigation"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -823,18 +559,6 @@ export default function App() {
 
           {/* Quick Action headers inside the Topbar */}
           <div className="flex items-center gap-2">
-            {scriptUrl && (
-              <button
-                id="header-manual-sync-btn"
-                onClick={() => executePullFromSheet(scriptUrl)}
-                disabled={isSyncing}
-                className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-full border border-indigo-200 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 inline-flex items-center shadow-2xs"
-                title="Force refresh & sync with remote Google Sheets"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isSyncing ? "animate-spin" : ""}`} />
-                <span>Sync Now</span>
-              </button>
-            )}
 
             <button
               id="header-quick-walkin-btn"
@@ -944,20 +668,13 @@ export default function App() {
         onRemoveStaff={handleRemoveStaff}
       />
 
-      {/* 3. GOOGLE SHEETS SYNC CONTROL PANELS HUB */}
+      {/* 3. OFFLINE STANDALONE LOCAL STORAGE DATABASE HUB */}
       <SyncConfigPanel
         isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
-        scriptUrl={scriptUrl}
-        onSaveUrl={handleSaveSyncUrl}
-        onTestSync={handleTestSync}
-        storageMode={storageMode}
-        onUpdateStorageMode={handleUpdateStorageMode}
-        autoSave={autoSave}
-        onUpdateAutoSave={handleUpdateAutoSave}
-        hasUnsavedChanges={hasUnsavedChanges}
-        onManualSave={handleManualSaveAll}
-        onDiscardChanges={handleDiscardChanges}
+        guests={guests}
+        onImportGuests={handleImportGuests}
+        onClearAllGuests={handleClearAllGuests}
       />
 
 
