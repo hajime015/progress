@@ -1,0 +1,6 @@
+{
+  "name": "Guest RSVP Manager",
+  "description": "An elegant Guest RSVP Management dashboard and custom invitation RSVP portal for seamless event planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
