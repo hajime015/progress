@@ -107,6 +107,38 @@ export default function DashboardView({ guests, onEditGuest, onDeleteGuest, onUp
 
   const upcomingWeekData = getUpcomingWeekData();
 
+  const getGreeting = () => {
+    try {
+      const currentTz = timezone && timezone !== "AUTO" ? timezone : getDetectedTimezone();
+      const formatter = new Intl.DateTimeFormat("en", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: currentTz
+      });
+      const hour = parseInt(formatter.format(new Date()), 10);
+      if (hour >= 5 && hour < 12) {
+        return "Good morning 🌅";
+      } else if (hour >= 12 && hour < 17) {
+        return "Good afternoon ☀️";
+      } else if (hour >= 17 && hour < 22) {
+        return "Good evening 🌆";
+      } else {
+        return "Good night 🌙";
+      }
+    } catch (e) {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) {
+        return "Good morning 🌅";
+      } else if (hour >= 12 && hour < 17) {
+        return "Good afternoon ☀️";
+      } else if (hour >= 17 && hour < 22) {
+        return "Good evening 🌆";
+      } else {
+        return "Good night 🌙";
+      }
+    }
+  };
+
   // Get today's date in YYYY-MM-DD
   const getTodayString = () => {
     return getTodayStringInTimezone(timezone || "UTC");
@@ -191,7 +223,7 @@ export default function DashboardView({ guests, onEditGuest, onDeleteGuest, onUp
       {/* Welcome header section */}
       <div>
         <h2 className="font-serif text-3xl font-bold text-navy tracking-tight">
-          Good day 👋
+          {getGreeting()}
         </h2>
         <p className="text-sm text-[#4b5c73] mt-1.5 font-medium">
           Here is a detailed snapshot of your service for today.
