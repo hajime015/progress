@@ -5,7 +5,7 @@
 
 import React from "react";
 import { Guest, RsvpStatus, EntryType } from "../types";
-import { User, Users, CheckCircle, HelpCircle, Utensils, Clipboard } from "lucide-react";
+import { User, Users, CheckCircle, HelpCircle, Utensils, Clipboard, Clock } from "lucide-react";
 import { getTodayStringInTimezone } from "../utils/timezone";
 
 interface DashboardViewProps {
@@ -38,12 +38,14 @@ export default function DashboardView({ guests, onEditGuest, onDeleteGuest, onUp
   const todayGuests = guests.filter(g => g.date === todayStr);
 
   const activeTodayGuests = todayGuests.filter(g => g.status !== RsvpStatus.DEPARTED);
-  const activeTodayReservations = activeTodayGuests.filter(g => g.type === EntryType.RESERVATION).length;
-  const activeTodayWalkins = activeTodayGuests.filter(g => g.type === EntryType.WALK_IN).length;
+  const activeTodayWaitlist = activeTodayGuests.filter(g => g.isWaitlist).length;
+  const activeTodayReservations = activeTodayGuests.filter(g => g.type === EntryType.RESERVATION && !g.isWaitlist).length;
+  const activeTodayWalkins = activeTodayGuests.filter(g => g.type === EntryType.WALK_IN && !g.isWaitlist).length;
 
   // KPIs calculations
-  const todayReservations = todayGuests.filter(g => g.type === EntryType.RESERVATION).length;
-  const todayWalkins = todayGuests.filter(g => g.type === EntryType.WALK_IN).length;
+  const todayWaitlistCount = todayGuests.filter(g => g.isWaitlist).length;
+  const todayReservations = todayGuests.filter(g => g.type === EntryType.RESERVATION && !g.isWaitlist).length;
+  const todayWalkins = todayGuests.filter(g => g.type === EntryType.WALK_IN && !g.isWaitlist).length;
   const todayCount = todayGuests.length;
   const todayPax = todayGuests.reduce((acc, curr) => acc + (curr.pax || 0), 0);
   const todayConfirmed = todayGuests.filter(g => g.status === RsvpStatus.CONFIRMED).length;
@@ -120,7 +122,7 @@ export default function DashboardView({ guests, onEditGuest, onDeleteGuest, onUp
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         {/* Today Booked Reservations */}
         <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-[#8a9ab5] mb-4">
@@ -132,6 +134,34 @@ export default function DashboardView({ guests, onEditGuest, onDeleteGuest, onUp
               {todayReservations}
             </div>
             <p className="text-xs text-[#8a9ab5] mt-1 leading-none">Booked RSVPs</p>
+          </div>
+        </div>
+
+        {/* Walk-Ins */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#8a9ab5] mb-4">
+            <span className="text-xs font-bold uppercase tracking-wider">Walk-ins</span>
+            <User className="w-4 h-4 text-sky-500" />
+          </div>
+          <div>
+            <div className="font-serif text-4xl font-extrabold text-[#0f1f38]">
+              {todayWalkins}
+            </div>
+            <p className="text-xs text-[#8a9ab5] mt-1 leading-none">Unscheduled arrivals</p>
+          </div>
+        </div>
+
+        {/* Waitlist Category */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#8a9ab5] mb-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600">Waitlist</span>
+            <Clock className="w-4 h-4 text-amber-500" />
+          </div>
+          <div>
+            <div className="font-serif text-4xl font-extrabold text-amber-600">
+              {todayWaitlistCount}
+            </div>
+            <p className="text-xs text-amber-705 text-amber-700 font-medium mt-1 leading-none">Queue waiting</p>
           </div>
         </div>
 
@@ -174,20 +204,6 @@ export default function DashboardView({ guests, onEditGuest, onDeleteGuest, onUp
               {todaySeated}
             </div>
             <p className="text-xs text-[#8a9ab5] mt-1 leading-none">Guests seated</p>
-          </div>
-        </div>
-
-        {/* Walk-Ins */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#8a9ab5] mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider">Walk-ins</span>
-            <User className="w-4 h-4 text-sky-500" />
-          </div>
-          <div>
-            <div className="font-serif text-4xl font-extrabold text-[#0f1f38]">
-              {todayWalkins}
-            </div>
-            <p className="text-xs text-[#8a9ab5] mt-1 leading-none">Unscheduled arrivals</p>
           </div>
         </div>
 
@@ -283,6 +299,11 @@ export default function DashboardView({ guests, onEditGuest, onDeleteGuest, onUp
             <span className="px-3.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-full">
               🚶 {activeTodayWalkins} Walk-ins
             </span>
+            {activeTodayWaitlist > 0 && (
+              <span className="px-3.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold rounded-full animate-pulse">
+                ⏳ {activeTodayWaitlist} Waitlist
+              </span>
+            )}
           </div>
         </div>
  
@@ -311,9 +332,15 @@ export default function DashboardView({ guests, onEditGuest, onDeleteGuest, onUp
                       {r.name}
                     </td>
                     <td className="py-4 px-5">
-                      <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase ${getTypeBadgeClass(r.type)}`}>
-                        {r.type === EntryType.WALK_IN ? "🚶 Walk-In" : "📋 RSVP"}
-                      </span>
+                      {r.isWaitlist ? (
+                        <span className="px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase bg-amber-50 border border-amber-200 text-amber-700">
+                          ⏳ Waitlist
+                        </span>
+                      ) : (
+                        <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase ${getTypeBadgeClass(r.type)}`}>
+                          {r.type === EntryType.WALK_IN ? "🚶 Walk-In" : "📋 RSVP"}
+                        </span>
+                      )}
                     </td>
                     <td className="py-4 px-5 font-bold text-navy">
                       {r.pax}

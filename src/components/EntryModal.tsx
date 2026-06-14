@@ -45,6 +45,7 @@ export default function EntryModal({
   const [status, setStatus] = useState<RsvpStatus>(RsvpStatus.CONFIRMED);
   const [staff, setStaff] = useState("");
   const [notes, setNotes] = useState("");
+  const [isWaitlist, setIsWaitlist] = useState(false);
 
   // Repeat guest detection state
   const [repeatGuest, setRepeatGuest] = useState<Guest | null>(null);
@@ -106,6 +107,7 @@ export default function EntryModal({
         setStatus(guestToEdit.status);
         setStaff(guestToEdit.staff || "");
         setNotes(guestToEdit.notes || "");
+        setIsWaitlist(!!guestToEdit.isWaitlist);
       } else {
         // New Reservation / New Walk-In
         setType(initialType === "Walk-In" ? EntryType.WALK_IN : EntryType.RESERVATION);
@@ -118,6 +120,7 @@ export default function EntryModal({
         setStatus(initialType === "Walk-In" ? RsvpStatus.SEATED : RsvpStatus.CONFIRMED);
         setStaff("");
         setNotes("");
+        setIsWaitlist(false);
       }
     }
   }, [isOpen, guestToEdit, initialType]);
@@ -217,6 +220,7 @@ export default function EntryModal({
         }
         setPax(match.pax || 2);
         setType(match.type);
+        setIsWaitlist(!!match.isWaitlist);
         setHasPulledDetails(true);
       }
     } else {
@@ -281,6 +285,7 @@ export default function EntryModal({
     if (repeatGuest.notes) {
       setNotes(`Repeat request: ${repeatGuest.notes}`);
     }
+    setIsWaitlist(!!repeatGuest.isWaitlist);
     setRepeatGuest(null); // clears alert once applied
   };
 
@@ -321,7 +326,8 @@ export default function EntryModal({
       table: table || "Unassigned",
       status,
       staff: staff || "Unassigned",
-      notes: notes.trim()
+      notes: notes.trim(),
+      isWaitlist
     };
 
     onSave(savedGuest);
@@ -377,6 +383,37 @@ export default function EntryModal({
                 🚶 Log Walk-In Client
               </button>
             </div>
+          </div>
+
+          {/* Waitlist Toggle Switch */}
+          <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-3xs">
+            <div>
+              <h4 className="font-bold text-navy text-xs flex items-center gap-1.5">
+                ⏳ Add to Waiting List (Waitlist)
+              </h4>
+              <p className="text-[10px] text-amber-800 font-medium mt-0.5">
+                Mark this customer as waiting for an available table slot.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                id="waitlist-toggle-checkbox"
+                type="checkbox"
+                checked={isWaitlist}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setIsWaitlist(checked);
+                  if (checked) {
+                    setTable("Unassigned");
+                    setStatus(RsvpStatus.PENDING);
+                  } else {
+                    setStatus(type === EntryType.WALK_IN ? RsvpStatus.SEATED : RsvpStatus.CONFIRMED);
+                  }
+                }}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
           </div>
 
           {/* Phone-Matched Repeat Visitor Alert */}

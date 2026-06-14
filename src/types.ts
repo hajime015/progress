@@ -33,6 +33,7 @@ export interface Guest {
   arrival?: string;
   mealPreference?: string;
   dietaryRestrictions?: string[];
+  isWaitlist?: boolean;
 }
 
 export interface TableConfig {
