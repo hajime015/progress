@@ -1,6 +1,6 @@
 {
-  "name": "Guest RSVP Manager",
-  "description": "An elegant Guest RSVP Management dashboard and custom invitation RSVP portal for seamless event planning.",
+  "name": "Kitchen Order Dashboard",
+  "description": "Interactive, premium kitchen ordering and inventory system. Load warehouse catalog spreadsheets, draft orders with category filters, and export order manifests for kitchen operations.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

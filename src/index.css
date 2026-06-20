@@ -1,17 +1,76 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300..900;1,300..900&family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-@layer base {
-  body {
-    font-family: var(--font-sans);
-    background-color: #f8fafc;
-    color: #0f172a;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+/* Custom scrollbar behaviors for desktop views */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@layer utilities {
+  .subtle-pulse {
+    animation: gentle-glow 2s infinite ease-in-out;
   }
 }
+
+@keyframes gentle-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0px rgba(43, 138, 62, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(43, 138, 62, 0.15);
+  }
+}
+
+/* Print-optimized stylesheet overrides */
+@media print {
+  /* Hide the main software interface entirely */
+  body * {
+    visibility: hidden !important;
+  }
+  
+  /* Selectively make only our preview pane and its children visible or printable */
+  #printable-kitchen-manifest,
+  #printable-kitchen-manifest * {
+    visibility: visible !important;
+  }
+
+  /* Force absolute maximum sizing, layout resetting, and background guarantees */
+  #printable-kitchen-manifest {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 2cm !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Prevent page breaks from splitting signatures or signature fields awkwardly */
+  tr {
+    page-break-inside: avoid !important;
+  }
+}
+

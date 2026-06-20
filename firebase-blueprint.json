@@ -1,0 +1,41 @@
+{
+  "collections": {
+    "catalogs": {
+      "documents": {
+        "userId": {
+          "fields": {
+            "items": {
+              "type": "array"
+            },
+            "updatedAt": {
+              "type": "timestamp"
+            }
+          }
+        }
+      }
+    },
+    "orders": {
+      "documents": {
+        "orderId": {
+          "fields": {
+            "userId": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "items": {
+              "type": "array"
+            },
+            "totalQuantity": {
+              "type": "number"
+            },
+            "totalGross": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}
