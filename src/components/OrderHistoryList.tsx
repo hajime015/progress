@@ -137,7 +137,7 @@ export default function OrderHistoryList({
                           COMPLETED
                         </span>
                       ) : (
-                        <span className="bg-amber-100/80 text-amber-850 border border-amber-200/80 font-sans text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 select-none">
+                        <span className="bg-amber-100/80 text-amber-900 border border-amber-200/80 font-sans text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 select-none">
                           <Clock className="h-2.5 w-2.5 shrink-0 animate-pulse text-amber-600" />
                           PENDING
                         </span>
@@ -262,12 +262,12 @@ export default function OrderHistoryList({
                                   <span className="font-mono text-slate-400 text-[10px]">
                                     {item.Quantity} x {currency.symbol}{item.Rate?.toFixed(2)}
                                   </span>
-                                  <span className="font-mono bg-emerald-50 text-emerald-850 border border-emerald-100 rounded px-1.5 py-0.5 font-bold">
+                                  <span className="font-mono bg-emerald-50 text-emerald-800 border border-emerald-100 rounded px-1.5 py-0.5 font-bold">
                                     {currency.symbol}{calculatedGross.toFixed(2)}
                                   </span>
                                 </>
                               ) : (
-                                <span className="font-mono bg-slate-55 text-slate-75 border border-slate-10 rounded px-1.5 py-0.5 font-bold">
+                                <span className="font-mono bg-slate-50 text-slate-700 border border-slate-200 rounded px-1.5 py-0.5 font-bold">
                                   {item.Quantity} {item.Unit_Type || "units"}
                                 </span>
                               )}

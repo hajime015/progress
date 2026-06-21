@@ -18,9 +18,6 @@ interface HeaderProps {
   liveTime: Date;
   activeShift: string;
   setActiveShift: (shift: string) => void;
-  onUploadExcel: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onDownloadTemplate: () => void;
-  onLoadSample: () => void;
   catalogLength: number;
   errorMessage: string | null;
   clearError: () => void;
@@ -39,9 +36,6 @@ export default function Header({
   liveTime,
   activeShift,
   setActiveShift,
-  onUploadExcel,
-  onDownloadTemplate,
-  onLoadSample,
   catalogLength,
   errorMessage,
   clearError,
@@ -51,7 +45,6 @@ export default function Header({
   currency,
   onCurrencyChange
 }: HeaderProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Format Date elegant
   const formatFullDate = (d: Date): string => {
@@ -114,39 +107,6 @@ export default function Header({
           
           <div className="flex flex-wrap items-center gap-2">
             
-            {/* Template actions */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-              title="Upload custom XLSX / CSV Catalog"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Upload xlsx
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={onUploadExcel}
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-            />
-
-            <button
-              onClick={onLoadSample}
-              title="Reset order catalog to demo data"
-              className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-500 lg:inline-flex hidden transition cursor-pointer bg-white"
-            >
-              <Sparkles className="h-4 w-4" />
-            </button>
-
-            <button
-              onClick={onDownloadTemplate}
-              title="Download clean warehouse XLSX catalog template"
-              className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-500 lg:inline-flex hidden transition cursor-pointer bg-white"
-            >
-              <Download className="h-4 w-4" />
-            </button>
-
             {/* Currency Selector */}
             {!user?.isSubAccount && (
               <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-slate-600 inline-flex transition hover:border-slate-300">

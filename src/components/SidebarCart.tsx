@@ -36,7 +36,7 @@ interface SidebarCartProps {
 const CATEGORY_CHIPS: Record<string, { bg: string; text: string; dot: string }> = {
   Produce: { bg: "bg-emerald-50 border-emerald-150", text: "text-emerald-700", dot: "bg-emerald-500" },
   Sauces: { bg: "bg-rose-50 border-rose-150", text: "text-rose-700", dot: "bg-rose-500" },
-  Bakery: { bg: "bg-amber-50 border-amber-150", text: "text-amber-850", dot: "bg-amber-500" },
+  Bakery: { bg: "bg-amber-50 border-amber-150", text: "text-amber-700", dot: "bg-amber-500" },
   Meat: { bg: "bg-red-50 border-red-150", text: "text-red-700", dot: "bg-red-500" },
   General: { bg: "bg-sky-50 border-sky-150", text: "text-sky-700", dot: "bg-sky-500" }
 };
@@ -47,7 +47,7 @@ const getCategoryChipStyle = (cat: string) => {
   const colorBands = [
     { bg: "bg-violet-50 border-violet-150", text: "text-violet-700 font-bold", dot: "bg-violet-500" },
     { bg: "bg-teal-50 border-teal-150", text: "text-teal-700 font-bold", dot: "bg-teal-500" },
-    { bg: "bg-orange-50 border-orange-150", text: "text-orange-855 font-bold", dot: "bg-orange-500" },
+    { bg: "bg-orange-50 border-orange-150", text: "text-orange-700 font-bold", dot: "bg-orange-500" },
     { bg: "bg-fuchsia-50 border-fuchsia-150", text: "text-fuchsia-700 font-bold", dot: "bg-fuchsia-500" }
   ];
   return colorBands[hash % colorBands.length];

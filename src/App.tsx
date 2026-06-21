@@ -14,6 +14,7 @@ import {
   saveSubAccountsToStorage
 } from "./data";
 import Header from "./components/Header";
+import { QuickCatalogSearch } from "./components/QuickCatalogSearch";
 import ItemGrid from "./components/ItemGrid";
 import SidebarCart from "./components/SidebarCart";
 import OrderHistoryList from "./components/OrderHistoryList";
@@ -40,7 +41,8 @@ import {
   Download,
   Upload,
   SlidersHorizontal,
-  Layers
+  Layers,
+  Sparkles
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "motion/react";
@@ -368,6 +370,7 @@ export default function App() {
   const [dbHubSelectedTab, setDbHubSelectedTab] = useState<"catalog" | "history" | "subaccounts">("catalog");
   const [dbHubEditorInput, setDbHubEditorInput] = useState("");
   const dbHubFileInputRef = useRef<HTMLInputElement>(null);
+  const catalogFileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync editor raw values dynamically
   useEffect(() => {
@@ -1412,7 +1415,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="w-full bg-slate-900 hover:bg-slate-850 text-white font-sans text-xs font-black py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-[0.98] cursor-pointer"
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-black py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-[0.98] cursor-pointer"
                   >
                     <svg className="h-4 w-4 shrink-0 bg-white rounded-full p-0.5" viewBox="0 0 24 24">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -1619,9 +1622,6 @@ export default function App() {
         liveTime={liveTime}
         activeShift={activeShift}
         setActiveShift={setActiveShift}
-        onUploadExcel={handleCatalogUpload}
-        onDownloadTemplate={downloadBlankMasterTemplate}
-        onLoadSample={handleResetToDemoCatalog}
         catalogLength={inventory.length}
         errorMessage={errorMsg}
         clearError={() => setErrorMsg(null)}
@@ -1798,117 +1798,19 @@ export default function App() {
                         Interactive Master Catalog
                       </h2>
                     </div>
-                    <p className="text-slate-500 text-xs sm:text-sm font-sans leading-relaxed">
-                      Increment or adjust ingredient units. Keep real-time pricing rate up-to-date; gross figures are calculated instantly. Under a safe, fully persistent local Database Hub.
-                    </p>
                   </div>
 
-                  {/* Real-time Global Search Directory Split into 3 Parts */}
-                  <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
-                      <div>
-                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider font-sans">
-                          Surgical Catalog Filters
-                        </h4>
-                        <p className="text-[11px] text-slate-400 font-sans">
-                          Use the three distinct controls below to search, isolate, and filter master directory records.
-                        </p>
-                      </div>
-                      <span className="text-[10px] h-fit font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full font-sans uppercase select-none shrink-0 self-start sm:self-center">
-                        Active Database Engine
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Part 1: Search by Item Name / Text */}
-                      <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-200/40 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-black text-slate-600 uppercase tracking-wider font-sans flex items-center gap-1">
-                            <Search className="h-3.5 w-3.5 text-emerald-600" />
-                            <span>1. Search Name / Text</span>
-                          </label>
-                          {searchQuery && (
-                            <button
-                              onClick={() => setSearchQuery("")}
-                              className="text-[9.5px] font-bold text-slate-400 hover:text-rose-600 transition"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search Item Name or Category (vise-versa)..."
-                          className="w-full px-3 py-2 text-xs bg-white border border-slate-250 focus:bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-sans text-slate-800 placeholder:text-slate-400"
-                        />
-                        <span className="text-[9.5px] text-slate-400 italic font-medium">
-                          Matches ingredient title or category vice versa.
-                        </span>
-                      </div>
-
-                      {/* Part 2: Filter by Quantity / Stock Status */}
-                      <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-200/40 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-black text-slate-600 uppercase tracking-wider font-sans flex items-center gap-1">
-                            <SlidersHorizontal className="h-3.5 w-3.5 text-emerald-600" />
-                            <span>2. Filter by Quantity</span>
-                          </label>
-                          {searchQtyFilter !== "all" && (
-                            <button
-                              onClick={() => setSearchQtyFilter("all")}
-                              className="text-[9.5px] font-bold text-slate-400 hover:text-rose-600 transition"
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
-                        <select
-                          value={searchQtyFilter}
-                          onChange={(e) => setSearchQtyFilter(e.target.value)}
-                          className="w-full px-2 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-sans text-slate-800"
-                        >
-                          <option value="all">🔍 Show All Quantities / Stock</option>
-                          <option value="drafted">📦 Staged Draft Items Only (&gt;0 Qty)</option>
-                          <option value="below_par">⚠️ Below Par Level / Reorder Alerts</option>
-                          <option value="in_stock">✅ Fully in Stock (On Hand &gt; 0)</option>
-                          <option value="out_of_stock">❌ Out of Stock (On Hand = 0)</option>
-                        </select>
-                        <span className="text-[9.5px] text-slate-400 italic font-medium">
-                          Filter directory based on inventory stock or draft quantity levels.
-                        </span>
-                      </div>
-
-                      {/* Part 3: Show Only Exact Code Looking For */}
-                      <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-200/40 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-black text-slate-600 uppercase tracking-wider font-sans flex items-center gap-1">
-                            <Layers className="h-3.5 w-3.5 text-emerald-600" />
-                            <span>3. Exact ID Code Match</span>
-                          </label>
-                          {searchExactCode && (
-                            <button
-                              onClick={() => setSearchExactCode("")}
-                              className="text-[9.5px] font-bold text-slate-400 hover:text-rose-600 transition"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="text"
-                          value={searchExactCode}
-                          onChange={(e) => setSearchExactCode(e.target.value)}
-                          placeholder="e.g. PRD-01, BAU-14"
-                          className="w-full px-3 py-2 text-xs bg-white border border-slate-200 focus:bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-mono text-slate-800 placeholder:text-slate-400 uppercase"
-                        />
-                        <span className="text-[9.5px] text-slate-400 italic font-medium">
-                          Isolates exactly the individual item code entered.
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Smart ERP Speed Search & Autocomplete Order Selector */}
+                  <QuickCatalogSearch
+                    items={inventory}
+                    quantities={quantities}
+                    onQuantityChange={handleQuantityAdjust}
+                    currency={currency}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    searchExactCode={searchExactCode}
+                    setSearchExactCode={setSearchExactCode}
+                  />
 
                   <ItemGrid
                     items={inventory}
@@ -2252,6 +2154,55 @@ export default function App() {
                       >
                         <Download className="h-3.5 w-3.5 text-emerald-400" />
                         Export Backup (.json)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Spreadsheet Synchronization & Catalog Management Card */}
+                  <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="space-y-1.5 max-w-xl">
+                      <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider font-sans flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-emerald-600" />
+                        Spreadsheet Integration & Catalog Seed
+                      </h4>
+                      <p className="text-slate-500 text-[11px] leading-relaxed font-semibold font-sans">
+                        Import bulk warehouse inventory via custom XLSX/CSV spreadsheets, load demo datasets to preview features instantly, or export empty structured sheets to start from scratch.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <input
+                        type="file"
+                        ref={catalogFileInputRef}
+                        onChange={handleCatalogUpload}
+                        accept=".xlsx,.xls,.csv"
+                        className="hidden"
+                      />
+                      <button
+                        onClick={() => catalogFileInputRef.current?.click()}
+                        className="px-4 py-2.5 bg-emerald-600 text-white font-sans font-extrabold text-xs rounded-xl flex items-center gap-2 hover:bg-emerald-700 active:scale-95 transition cursor-pointer shadow-sm shadow-emerald-600/10"
+                        title="Upload Custom Excel/CSV Catalog"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        Upload Catalog (XLSX)
+                      </button>
+
+                      <button
+                        onClick={handleResetToDemoCatalog}
+                        className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-sans font-extrabold text-xs rounded-xl flex items-center gap-2 active:scale-95 transition cursor-pointer"
+                        title="Load Pristine Sample Inventory"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                        Load Demo Data
+                      </button>
+
+                      <button
+                        onClick={downloadBlankMasterTemplate}
+                        className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-sans font-extrabold text-xs rounded-xl flex items-center gap-2 active:scale-95 transition cursor-pointer"
+                        title="Get Empty Catalog SpreadSheet Boilerplate"
+                      >
+                        <Download className="h-3.5 w-3.5 text-slate-500" />
+                        Download Template
                       </button>
                     </div>
                   </div>
